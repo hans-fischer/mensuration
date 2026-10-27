@@ -1,0 +1,73 @@
+:root {
+  --board: #d5dad4;
+  --board-line: rgba(29, 42, 51, 0.07);
+  --instrument: #fbfcfa;
+  --ink: #1d2a33;
+  --ink-soft: #56636b;
+  --rule: #c5ccc7;
+  --accent: #1f5fae;
+  --accent-soft: #e3ecf7;
+  --danger: #b3261e;
+  --font: 'Barlow Semi Condensed', 'Arial Narrow', system-ui, sans-serif;
+
+  color-scheme: light;
+  font-family: var(--font);
+  font-size: 16px;
+  font-weight: 500;
+  line-height: 1.4;
+  color: var(--ink);
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  height: 100%;
+  margin: 0;
+}
+
+body {
+  background: var(--board);
+  overflow: hidden;
+}
+
+button,
+input {
+  font: inherit;
+  color: inherit;
+}
+
+:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.print-sheet {
+  display: none;
+}
+
+@media print {
+  body {
+    background: #ffffff;
+    overflow: visible;
+  }
+
+  body > :not(.print-sheet) {
+    display: none !important;
+  }
+
+  .print-sheet {
+    display: block;
+  }
+
+  .print-sheet img {
+    display: block;
+    max-width: 100%;
+    max-height: 100vh;
+    margin: 0 auto;
+  }
+}

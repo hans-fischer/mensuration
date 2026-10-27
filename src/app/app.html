@@ -1,0 +1,386 @@
+<header class="toolbar">
+  <span class="brand">Bemessung</span>
+
+  <div class="group">
+    <button type="button" class="action" (click)="fileInput.click()">Plan öffnen</button>
+    <input
+      #fileInput
+      type="file"
+      accept="image/*"
+      hidden
+      data-testid="file-input"
+      (change)="onFileInput($event)"
+    />
+  </div>
+
+  <div class="group segmented" aria-label="Werkzeug" role="group">
+    <button
+      type="button"
+      title="Linien ziehen (L)"
+      [attr.aria-pressed]="store.tool() === 'draw' && !store.drawsReference()"
+      (click)="store.setTool('draw')"
+    >
+      <svg viewBox="0 0 20 20" aria-hidden="true">
+        <path d="M3 17 17 3M1 15l4 4M15 1l4 4" />
+      </svg>
+      Linie
+    </button>
+    <button
+      type="button"
+      title="Linien auswählen und verschieben (V)"
+      [attr.aria-pressed]="store.tool() === 'select'"
+      (click)="store.setTool('select')"
+    >
+      <svg viewBox="0 0 20 20" aria-hidden="true">
+        <path d="M4 2v14l4-4 3 6 2-1-3-6h6z" />
+      </svg>
+      Auswahl
+    </button>
+    <button
+      type="button"
+      title="Maßstab neu festlegen: Referenzstrecke ziehen (R)"
+      [attr.aria-pressed]="store.drawsReference()"
+      (click)="store.setTool('reference')"
+    >
+      <svg viewBox="0 0 20 20" aria-hidden="true">
+        <path d="m2 14 12-12 4 4L6 18zM5.5 10.5l2 2M8.5 7.5l2 2M11.5 4.5l2 2" />
+      </svg>
+      Maßstab
+    </button>
+  </div>
+
+  <div class="group">
+    <button
+      type="button"
+      [title]="
+        store.phase() === 'measure'
+          ? 'Rechteck mit festen Kantenlängen einsetzen, z. B. ein Möbelstück'
+          : 'Lege zuerst den Maßstab fest'
+      "
+      [disabled]="store.phase() !== 'measure'"
+      (click)="openRectDialog('new')"
+    >
+      <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M3 5h14v10H3z" /></svg>
+      Rechteck
+    </button>
+  </div>
+
+  <div class="group" aria-label="Farbe" role="group">
+    @for (c of colors; track c.value) {
+      <button
+        type="button"
+        class="swatch"
+        [title]="c.name"
+        [attr.aria-label]="c.name"
+        [attr.aria-pressed]="store.color() === c.value"
+        [style.--swatch]="c.value"
+        (click)="store.setColor(c.value)"
+      ></button>
+    }
+  </div>
+
+  <div class="group" aria-label="Linienstärke" role="group">
+    @for (t of thicknesses; track t; let i = $index) {
+      <button
+        type="button"
+        class="weight"
+        [title]="'Linienstärke ' + (i + 1)"
+        [attr.aria-label]="'Linienstärke ' + (i + 1)"
+        [attr.aria-pressed]="store.thickness() === t"
+        (click)="store.setThickness(t)"
+      >
+        <svg viewBox="0 0 24 20" aria-hidden="true">
+          <line x1="3" y1="10" x2="21" y2="10" [attr.stroke-width]="t * 1.5" />
+        </svg>
+      </button>
+    }
+  </div>
+
+  <div class="group">
+    <button
+      type="button"
+      class="icon"
+      [title]="'Rückgängig (' + modKey + ' Z)'"
+      aria-label="Rückgängig"
+      [disabled]="!store.canUndo()"
+      (click)="store.undo()"
+    >
+      <svg viewBox="0 0 20 20" aria-hidden="true">
+        <path d="M7 4 3 8l4 4M3 8h9a5 5 0 0 1 0 10H8" />
+      </svg>
+    </button>
+    <button
+      type="button"
+      class="icon"
+      [title]="'Wiederholen (' + modKey + ' Shift Z)'"
+      aria-label="Wiederholen"
+      [disabled]="!store.canRedo()"
+      (click)="store.redo()"
+    >
+      <svg viewBox="0 0 20 20" aria-hidden="true">
+        <path d="m13 4 4 4-4 4m4-4H8a5 5 0 0 0 0 10h4" />
+      </svg>
+    </button>
+  </div>
+
+  <span class="spacer"></span>
+
+  <div class="group toolbar-unit">
+    <ng-container [ngTemplateOutlet]="unitToggle" />
+  </div>
+
+  <div class="group">
+    <button
+      type="button"
+      class="action"
+      [title]="'Als JPG speichern (' + modKey + ' S)'"
+      [disabled]="!store.image() || busy()"
+      (click)="saveJpeg()"
+    >
+      Als JPG speichern
+    </button>
+    <button
+      type="button"
+      class="icon"
+      aria-label="Drucken"
+      [title]="'Drucken (' + modKey + ' P)'"
+      [disabled]="!store.image() || busy()"
+      (click)="print()"
+    >
+      <svg viewBox="0 0 20 20" aria-hidden="true">
+        <path d="M5 7V2h10v5M5 15H2V8h16v7h-3M5 12h10v6H5z" />
+      </svg>
+    </button>
+  </div>
+</header>
+
+<!-- Shown in the list header on wide screens and in the toolbar on phones, where the list is hidden. -->
+<ng-template #unitToggle>
+  <div class="segmented" aria-label="Einheit" role="group">
+    <button
+      type="button"
+      [attr.aria-pressed]="store.unit() === 'cm'"
+      (click)="store.unit.set('cm')"
+    >
+      cm
+    </button>
+    <button type="button" [attr.aria-pressed]="store.unit() === 'm'" (click)="store.unit.set('m')">
+      m
+    </button>
+  </div>
+</ng-template>
+
+<main
+  class="workspace"
+  [class.drag-over]="dragOver()"
+  (dragover)="onDragOver($event)"
+  (dragleave)="onDragLeave($event)"
+  (drop)="onDrop($event)"
+>
+  <app-plan-canvas class="board" />
+
+  @if (store.image()) {
+    <div class="zoom-controls" aria-label="Ansicht" role="group">
+      <button
+        type="button"
+        class="icon"
+        title="Verkleinern (−)"
+        aria-label="Verkleinern"
+        (click)="zoomOut()"
+      >
+        <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M4 10h12" /></svg>
+      </button>
+      <span class="zoom" data-testid="zoom">{{ zoomPercent() }} %</span>
+      <button
+        type="button"
+        class="icon"
+        title="Vergrößern (+)"
+        aria-label="Vergrößern"
+        (click)="zoomIn()"
+      >
+        <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M4 10h12M10 4v12" /></svg>
+      </button>
+      <button type="button" title="Ganzen Plan zeigen (0)" (click)="fit()">Einpassen</button>
+    </div>
+  }
+
+  @if (!store.image()) {
+    <section class="welcome">
+      <h1>Maße auf einem Plan abnehmen</h1>
+      <ol>
+        <li>Plan als Bild öffnen, hierher ziehen oder mit {{ modKey }} V einfügen.</li>
+        <li>Eine Strecke nachziehen, deren Länge du kennst, und die Länge eingeben.</li>
+        <li>Weitere Linien ziehen, sie werden automatisch bemaßt.</li>
+      </ol>
+      <button type="button" class="action large" (click)="fileInput.click()">Plan öffnen</button>
+      @if (error(); as message) {
+        <p class="error" role="alert">{{ message }}</p>
+      }
+    </section>
+  }
+
+  @if (store.image()) {
+    <aside class="measures" aria-labelledby="measures-title">
+      <div class="measures-head">
+        <h2 id="measures-title">Maße</h2>
+        <ng-container [ngTemplateOutlet]="unitToggle" />
+      </div>
+      @if (rows().length === 0) {
+        <p class="none">Noch keine Linien oder Rechtecke.</p>
+      } @else {
+        <ul>
+          @for (row of rows(); track row.id) {
+            <li [class.selected]="row.id === store.selectedId()" data-testid="measure">
+              <button type="button" class="pick" (click)="store.select(row.id)">
+                <span class="dot" [class.square]="row.rect" [style.background]="row.color"></span>
+                <span class="value" data-testid="measure-value">{{ row.label }}</span>
+              </button>
+              <button
+                type="button"
+                class="remove"
+                [attr.aria-label]="row.rect ? 'Rechteck löschen' : 'Linie löschen'"
+                [title]="row.rect ? 'Rechteck löschen' : 'Linie löschen'"
+                (click)="store.deleteItem(row.id)"
+              >
+                <svg viewBox="0 0 20 20" aria-hidden="true"><path d="m5 5 10 10M15 5 5 15" /></svg>
+              </button>
+            </li>
+          }
+        </ul>
+      }
+    </aside>
+  }
+</main>
+
+<footer class="status">
+  <p class="hint" data-testid="hint" [title]="hint()">{{ hint() }}</p>
+  @if (store.image() && error(); as message) {
+    <p class="error" role="alert">{{ message }}</p>
+  }
+  @if (store.image() && store.selectedId() === null) {
+    <p class="nav">Leertaste + Ziehen verschiebt, {{ modKey }} + Scrollen zoomt.</p>
+  }
+  @if (store.selectedLine(); as line) {
+    <button type="button" class="link danger" (click)="store.deleteItem(line.id)">
+      Ausgewählte Linie löschen
+    </button>
+  }
+  @if (store.selectedRect(); as rect) {
+    <div class="actions">
+      <button type="button" class="link" (click)="openRectDialog(rect.id)">Maße ändern</button>
+      <button type="button" class="link" (click)="store.rotateRect(rect.id)">Um 90° drehen</button>
+      <button type="button" class="link danger" (click)="store.deleteItem(rect.id)">
+        Ausgewähltes Rechteck löschen
+      </button>
+    </div>
+  }
+  @if (referenceLabel(); as label) {
+    <div class="reference">
+      <span
+        >Maßstab aus Referenz <strong data-testid="reference">{{ label }}</strong></span
+      >
+      <button type="button" class="link" (click)="store.editCalibration()">Länge ändern</button>
+      <button type="button" class="link" (click)="store.setTool('reference')">Neu festlegen</button>
+    </div>
+  }
+</footer>
+
+<dialog
+  #calibrationDialog
+  class="calibration"
+  aria-labelledby="calibration-title"
+  (close)="onDialogClose()"
+>
+  <form (submit)="confirmLength($event)" novalidate>
+    <h2 id="calibration-title">Wie lang ist diese Strecke in Wirklichkeit?</h2>
+    @if (store.reference()) {
+      <p>Der neue Wert ersetzt den bisherigen Maßstab. Alle Maße werden daran angepasst.</p>
+    } @else {
+      <p>Daraus ergibt sich der Maßstab. Alle weiteren Linien werden danach automatisch bemaßt.</p>
+    }
+    <label>
+      <span>Länge</span>
+      <span class="field">
+        <input
+          #lengthInput
+          type="text"
+          inputmode="decimal"
+          autocomplete="off"
+          placeholder="z. B. 350"
+          [attr.aria-invalid]="lengthInvalid()"
+          aria-describedby="length-help"
+          (input)="lengthInvalid.set(false)"
+        />
+        <span class="suffix">cm</span>
+      </span>
+    </label>
+    <p id="length-help" class="help" [class.error]="lengthInvalid()">
+      @if (lengthInvalid()) {
+        Gib eine Länge größer als 0 ein, zum Beispiel 350 oder 3,5 m.
+      } @else {
+        In Zentimetern. Auch 3,5 m oder 35 mm funktioniert.
+      }
+    </p>
+    <div class="buttons">
+      <button type="button" (click)="calibrationDialog.close()">Abbrechen</button>
+      <button type="submit" class="action">Maßstab übernehmen</button>
+    </div>
+  </form>
+</dialog>
+
+<dialog #rectDialog class="calibration" aria-labelledby="rect-title" (close)="rectEdit.set(null)">
+  <form (submit)="confirmRect($event)" novalidate>
+    @if (rectEdit() === 'new') {
+      <h2 id="rect-title">Rechteck mit festen Maßen</h2>
+      <p>Zum Beispiel ein Möbelstück. Danach kannst du es auf dem Plan verschieben und drehen.</p>
+    } @else {
+      <h2 id="rect-title">Maße des Rechtecks</h2>
+      <p>Das Rechteck behält seine Mitte und Drehung.</p>
+    }
+    <div class="pair">
+      <label>
+        <span>Länge</span>
+        <span class="field">
+          <input
+            #rectWidth
+            type="text"
+            inputmode="decimal"
+            autocomplete="off"
+            placeholder="z. B. 200"
+            aria-describedby="rect-help"
+            (input)="rectInvalid.set(false)"
+          />
+          <span class="suffix">cm</span>
+        </span>
+      </label>
+      <label>
+        <span>Breite</span>
+        <span class="field">
+          <input
+            #rectHeight
+            type="text"
+            inputmode="decimal"
+            autocomplete="off"
+            placeholder="z. B. 90"
+            aria-describedby="rect-help"
+            (input)="rectInvalid.set(false)"
+          />
+          <span class="suffix">cm</span>
+        </span>
+      </label>
+    </div>
+    <p id="rect-help" class="help" [class.error]="rectInvalid()">
+      @if (rectInvalid()) {
+        Gib beide Längen größer als 0 ein, zum Beispiel 200 und 90.
+      } @else {
+        In Zentimetern. Auch 2 m oder 900 mm funktioniert.
+      }
+    </p>
+    <div class="buttons">
+      <button type="button" (click)="rectDialog.close()">Abbrechen</button>
+      <button type="submit" class="action">
+        {{ rectEdit() === 'new' ? 'Rechteck einsetzen' : 'Maße übernehmen' }}
+      </button>
+    </div>
+  </form>
+</dialog>
